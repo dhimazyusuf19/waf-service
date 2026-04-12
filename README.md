@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ShieldWAF — WAF as a Service
 
 **Tugas Akhir — Taqiya Nabilla Nathania Afnani (2221101859)**
@@ -111,3 +112,6 @@ python3 scripts/testing/comparative.py \
 ---
 
 *PSSN 2026 — Rekayasa Keamanan Siber*
+=======
+# WAF Service
+>>>>>>> d589f511f740b7e402e55220c3e1c65131c14b04
