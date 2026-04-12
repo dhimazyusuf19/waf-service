@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShieldWAF — WAF as a Service</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f8fafc; --bg2: #ffffff; --bg3: #f1f5f9;
+  --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.12);
+  --text: #0f172a; --muted: #64748b; --hint: #94a3b8;
+  --accent: #4f46e5; --accent-light: #eef2ff; --accent-dark: #3730a3;
+  --red: #dc2626; --red-bg: #fef2f2; --red-text: #991b1b;
+  --amber: #d97706; --amber-bg: #fffbeb; --amber-text: #92400e;
+  --green: #16a34a; --green-bg: #f0fdf4; --green-text: #14532d;
+  --blue: #2563eb; --blue-bg: #eff6ff; --blue-text: #1e40af;
+  --purple: #7c3aed; --purple-bg: #f5f3ff; --purple-text: #4c1d95;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-lg: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+  --mono: 'Courier New', monospace;
+  --radius: 10px; --radius-sm: 6px; --radius-lg: 14px;
+}
+
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+       background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ─── AUTH PAGES ─────────────────────────────────────────────────────────── */
+.auth-wrap { min-height: 100vh; display: flex; align-items: center;
+             justify-content: center; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
+.auth-card { background: var(--bg2); border-radius: var(--radius-lg); padding: 40px;
+             width: 100%; max-width: 420px; box-shadow: var(--shadow-lg); }
+.auth-logo { text-align: center; margin-bottom: 28px; }
+.auth-logo h1 { font-size: 22px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+.auth-logo p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.auth-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.auth-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+.form-input { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border2);
+              border-radius: var(--radius-sm); font-size: 14px; outline: none;
+              background: var(--bg); color: var(--text); transition: border 0.15s; }
+.form-input:focus { border-color: var(--accent); background: #fff; }
+.form-input::placeholder { color: var(--hint); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+       padding: 10px 18px; border-radius: var(--radius-sm); font-size: 14px;
+       font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--accent); color: #fff; width: 100%; padding: 12px; }
+.btn-primary:hover { background: var(--accent-dark); }
+.btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+.btn-secondary:hover { background: var(--border); }
+.btn-danger { background: var(--red-bg); color: var(--red-text); border: 1px solid rgba(220,38,38,0.2); }
+.btn-danger:hover { background: #fee2e2; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-ghost { background: transparent; color: var(--muted); padding: 6px 10px; }
+.btn-ghost:hover { background: var(--bg3); color: var(--text); }
+.auth-switch { text-align: center; margin-top: 20px; font-size: 13px; color: var(--muted); }
+.auth-switch a { color: var(--accent); cursor: pointer; font-weight: 600; text-decoration: none; }
+.alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px;
+         margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.alert-error { background: var(--red-bg); color: var(--red-text); border: 1px solid rgba(220,38,38,0.2); }
+.alert-success { background: var(--green-bg); color: var(--green-text); border: 1px solid rgba(22,163,74,0.2); }
+
+/* ─── APP LAYOUT ─────────────────────────────────────────────────────────── */
+.app-shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+.sidebar { background: var(--bg2); border-right: 1px solid var(--border);
+           display: flex; flex-direction: column; }
+.sidebar-head { padding: 20px; border-bottom: 1px solid var(--border); }
+.sidebar-logo { font-size: 18px; font-weight: 800; color: var(--accent); }
+.sidebar-logo span { font-weight: 400; color: var(--muted); font-size: 12px; display: block; margin-top: 2px; }
+.sidebar-user { padding: 12px 16px; margin: 8px; border-radius: var(--radius); background: var(--bg3); cursor: pointer; }
+.sidebar-user-name { font-size: 13px; font-weight: 600; }
+.sidebar-user-email { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.nav { padding: 8px; flex: 1; }
+.nav-section { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+               color: var(--hint); padding: 8px 10px 4px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+            border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+            color: var(--muted); cursor: pointer; transition: all 0.12s; margin-bottom: 2px; }
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+.sidebar-foot { padding: 16px; border-top: 1px solid var(--border); }
+
+/* ─── MAIN AREA ──────────────────────────────────────────────────────────── */
+.main { display: flex; flex-direction: column; overflow: auto; background: var(--bg); }
+.topbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 14px 28px;
+          display: flex; align-items: center; justify-content: space-between; }
+.topbar-title { font-size: 16px; font-weight: 700; }
+.topbar-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.content { padding: 24px 28px; flex: 1; }
+
+/* ─── CARDS ──────────────────────────────────────────────────────────────── */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+        box-shadow: var(--shadow); }
+.card-header { padding: 14px 18px; border-bottom: 1px solid var(--border);
+               display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-size: 13px; font-weight: 700; }
+.card-body { padding: 18px; }
+
+/* ─── STATS ──────────────────────────────────────────────────────────────── */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 16px 18px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.stat::after { content:''; position:absolute; top:0; left:0; width:3px; height:100%; border-radius: 3px 0 0 3px; }
+.stat.c-red::after { background: var(--red); }
+.stat.c-amber::after { background: var(--amber); }
+.stat.c-green::after { background: var(--green); }
+.stat.c-blue::after { background: var(--blue); }
+.stat.c-purple::after { background: var(--purple); }
+.stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;
+              color: var(--muted); margin-bottom: 6px; }
+.stat-value { font-size: 26px; font-weight: 800; letter-spacing: -1px; font-family: var(--mono); }
+.stat.c-red .stat-value { color: var(--red); }
+.stat.c-amber .stat-value { color: var(--amber); }
+.stat.c-green .stat-value { color: var(--green); }
+.stat.c-blue .stat-value { color: var(--blue); }
+.stat.c-purple .stat-value { color: var(--purple); }
+.stat-meta { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+/* ─── BADGE ──────────────────────────────────────────────────────────────── */
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px;
+         font-size: 11px; font-weight: 600; }
+.badge-green { background: var(--green-bg); color: var(--green-text); }
+.badge-red   { background: var(--red-bg);   color: var(--red-text); }
+.badge-amber { background: var(--amber-bg); color: var(--amber-text); }
+.badge-blue  { background: var(--blue-bg);  color: var(--blue-text); }
+.badge-purple{ background: var(--purple-bg);color: var(--purple-text); }
+.badge-gray  { background: var(--bg3);      color: var(--muted); }
+
+/* ─── TABLE ──────────────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;
+     color: var(--muted); padding: 10px 14px; text-align: left;
+     border-bottom: 1px solid var(--border); background: var(--bg3); }
+td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg3); }
+
+/* ─── SITE CARDS ─────────────────────────────────────────────────────────── */
+.sites-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.site-card { background: var(--bg2); border: 1.5px solid var(--border); border-radius: var(--radius-lg);
+             padding: 18px; box-shadow: var(--shadow); cursor: pointer; transition: all 0.15s; }
+.site-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+.site-card-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.site-domain { font-size: 15px; font-weight: 700; }
+.site-name { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.site-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.site-actions { display: flex; gap: 6px; margin-top: 14px; }
+
+/* ─── MODAL ──────────────────────────────────────────────────────────────── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+                 display: flex; align-items: center; justify-content: center;
+                 z-index: 1000; padding: 20px; }
+.modal { background: var(--bg2); border-radius: var(--radius-lg); width: 100%;
+         max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+.modal-head { padding: 18px 22px 14px; border-bottom: 1px solid var(--border);
+              display: flex; align-items: center; justify-content: space-between; }
+.modal-title { font-size: 16px; font-weight: 700; }
+.modal-close { background: none; border: none; font-size: 20px; cursor: pointer;
+               color: var(--muted); width: 28px; height: 28px; border-radius: 50%;
+               display: flex; align-items: center; justify-content: center; }
+.modal-close:hover { background: var(--bg3); color: var(--text); }
+.modal-body { padding: 22px; }
+.modal-foot { padding: 14px 22px; border-top: 1px solid var(--border);
+              display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ─── FORM ───────────────────────────────────────────────────────────────── */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.toggle-row { display: flex; align-items: center; justify-content: space-between;
+              padding: 10px 0; border-bottom: 1px solid var(--border); }
+.toggle-row:last-child { border-bottom: none; }
+.toggle-label { font-size: 13px; font-weight: 500; }
+.toggle-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track { position: absolute; inset: 0; background: var(--border2);
+                border-radius: 99px; cursor: pointer; transition: 0.2s; }
+.toggle input:checked + .toggle-track { background: var(--accent); }
+.toggle-track::before { content: ''; position: absolute; width: 14px; height: 14px;
+                         left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s; }
+.toggle input:checked + .toggle-track::before { transform: translateX(16px); }
+
+/* ─── LOG TABLE ──────────────────────────────────────────────────────────── */
+.log-entry { display: flex; align-items: center; gap: 10px; padding: 10px 0;
+             border-bottom: 1px solid var(--border); font-size: 12px; }
+.log-entry:last-child { border-bottom: none; }
+.log-type { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+            text-transform: uppercase; min-width: 80px; text-align: center; flex-shrink: 0; }
+.log-ip { font-family: var(--mono); color: var(--muted); min-width: 110px; font-size: 11px; }
+.log-msg { flex: 1; color: var(--text); }
+.log-time { font-size: 10px; color: var(--hint); white-space: nowrap; font-family: var(--mono); }
+
+/* ─── EMPTY STATE ────────────────────────────────────────────────────────── */
+.empty { text-align: center; padding: 60px 20px; }
+.empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+.empty-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.empty-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+/* ─── MISC ───────────────────────────────────────────────────────────────── */
+.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+.text-muted { color: var(--muted); }
+.text-small { font-size: 12px; }
+.mono { font-family: var(--mono); }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.mt-1 { margin-top: 4px; }
+.mt-3 { margin-top: 12px; }
+.mb-4 { margin-bottom: 16px; }
+.loading-spin { width: 20px; height: 20px; border: 2px solid var(--border2);
+                border-top-color: var(--accent); border-radius: 50%;
+                animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+            animation: pulse 2s ease-in-out infinite; display: inline-block; }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0.4)} 50%{box-shadow:0 0 0 5px rgba(22,163,74,0)} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// MINIMAL REACT-LIKE STATE MANAGER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const API = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let STATE = {
+  page: 'login',        // login | register | dashboard | sites | site-detail | profile
+  user: null,
+  token: sessionStorage.getItem('waf_token'),
+  sites: [],
+  currentSite: null,
+  metrics: null,
+  logs: [],
+  loading: false,
+  error: null,
+  modal: null,          // null | 'add-site' | 'edit-site' | 'delete-site' | 'settings'
+  notification: null,
+};
+
+function setState(patch) {
+  Object.assign(STATE, patch);
+  render();
+}
+
+function notify(msg, type = 'success') {
+  setState({ notification: { msg, type } });
+  setTimeout(() => setState({ notification: null }), 3500);
+}
+
+// ─── API helper ───────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (STATE.token) headers['Authorization'] = `Bearer ${STATE.token}`;
+  try {
+    const res = await fetch(API + path, {
+      method, headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    return json;
+  } catch (e) {
+    throw e;
+  }
+}
+
+// ─── Auth actions ──────────────────────────────────────────────────────────────
+async function doLogin(email, password) {
+  setState({ loading: true, error: null });
+  try {
+    const r = await api('POST', '/api/auth/login', { email, password });
+    sessionStorage.setItem('waf_token', r.access_token);
+    setState({ token: r.access_token, user: r.user, page: 'dashboard', loading: false });
+    await loadSites();
+    await loadOverviewMetrics();
+  } catch (e) {
+    setState({ loading: false, error: e.message });
+  }
+}
+
+async function doRegister(data) {
+  setState({ loading: true, error: null });
+  try {
+    const r = await api('POST', '/api/auth/register', data);
+    sessionStorage.setItem('waf_token', r.access_token);
+    setState({ token: r.access_token, user: r.user, page: 'dashboard', loading: false });
+  } catch (e) {
+    setState({ loading: false, error: e.message });
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('waf_token');
+  setState({ token: null, user: null, page: 'login', sites: [], currentSite: null, metrics: null });
+}
+
+async function loadMe() {
+  if (!STATE.token) return;
+  try {
+    const r = await api('GET', '/api/auth/me');
+    setState({ user: r.user });
+  } catch (e) {
+    doLogout();
+  }
+}
+
+// ─── Sites actions ─────────────────────────────────────────────────────────────
+async function loadSites() {
+  try {
+    const r = await api('GET', '/api/sites/');
+    setState({ sites: r.sites || [] });
+  } catch (e) {}
+}
+
+async function createSite(data) {
+  setState({ loading: true, error: null });
+  try {
+    const r = await api('POST', '/api/sites/', data);
+    await loadSites();
+    setState({ loading: false, modal: null });
+    notify(`Site ${r.site.domain} berhasil ditambahkan. WAF aktif!`);
+  } catch (e) {
+    setState({ loading: false, error: e.message });
+  }
+}
+
+async function updateSite(id, data) {
+  setState({ loading: true, error: null });
+  try {
+    const r = await api('PUT', `/api/sites/${id}`, data);
+    await loadSites();
+    if (STATE.currentSite?.id === id) {
+      setState({ currentSite: r.site });
+    }
+    setState({ loading: false, modal: null });
+    notify('Site berhasil diperbarui');
+  } catch (e) {
+    setState({ loading: false, error: e.message });
+  }
+}
+
+async function deleteSite(id) {
+  setState({ loading: true });
+  try {
+    await api('DELETE', `/api/sites/${id}`);
+    await loadSites();
+    setState({ loading: false, modal: null, page: 'sites', currentSite: null });
+    notify('Site berhasil dihapus', 'success');
+  } catch (e) {
+    setState({ loading: false });
+    notify(e.message, 'error');
+  }
+}
+
+async function toggleWAF(siteId) {
+  try {
+    const r = await api('POST', `/api/sites/${siteId}/toggle-waf`);
+    await loadSites();
+    if (STATE.currentSite?.id === siteId) {
+      const updated = STATE.sites.find(s => s.id === siteId);
+      if (updated) setState({ currentSite: updated });
+    }
+    notify(r.message);
+  } catch (e) { notify(e.message, 'error'); }
+}
+
+async function loadSiteDetail(site) {
+  setState({ currentSite: site, page: 'site-detail', logs: [], metrics: null });
+  try {
+    const [metricsR, logsR] = await Promise.all([
+      api('GET', `/api/metrics/site/${site.id}?days=1`),
+      api('GET', `/api/sites/${site.id}/logs?limit=50`),
+    ]);
+    setState({ metrics: metricsR.metrics, logs: logsR.logs || [] });
+  } catch (e) {}
+}
+
+async function loadOverviewMetrics() {
+  try {
+    const r = await api('GET', '/api/metrics/overview');
+    setState({ overviewMetrics: r });
+  } catch (e) {}
+}
+
+async function generateDemoData(siteId) {
+  try {
+    await api('POST', `/api/metrics/site/${siteId}/demo-attack`, { count: 30 });
+    notify('30 data serangan demo berhasil dibuat');
+    if (STATE.currentSite?.id === siteId) {
+      await loadSiteDetail(STATE.currentSite);
+    }
+  } catch (e) { notify(e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDER ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag);
+  if (attrs) Object.entries(attrs).forEach(([k, v]) => {
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'html') el.innerHTML = v;
+    else if (v !== undefined && v !== false) el.setAttribute(k, v);
+  });
+  children.flat(Infinity).forEach(c => {
+    if (c == null || c === false) return;
+    el.append(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c);
+  });
+  return el;
+}
+
+function render() {
+  const root = document.getElementById('root');
+  root.innerHTML = '';
+
+  // Notification toast
+  if (STATE.notification) {
+    const toast = h('div', {
+      style: `position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 18px;
+              border-radius:10px;font-size:13px;font-weight:500;max-width:360px;
+              box-shadow:0 4px 12px rgba(0,0,0,0.15);
+              background:${STATE.notification.type === 'error' ? '#fef2f2' : '#f0fdf4'};
+              color:${STATE.notification.type === 'error' ? '#991b1b' : '#14532d'};
+              border:1px solid ${STATE.notification.type === 'error' ? 'rgba(220,38,38,0.2)' : 'rgba(22,163,74,0.2)'}`,
+    }, STATE.notification.msg);
+    root.append(toast);
+  }
+
+  if (!STATE.token || !STATE.user) {
+    root.append(STATE.page === 'register' ? renderRegister() : renderLogin());
+    return;
+  }
+
+  // Modal
+  if (STATE.modal) {
+    const overlay = renderModal();
+    if (overlay) root.append(overlay);
+  }
+
+  root.append(renderApp());
+}
+
+// ─── Login ────────────────────────────────────────────────────────────────────
+function renderLogin() {
+  let emailEl, passEl;
+  const card = h('div', { class: 'auth-wrap' },
+    h('div', { class: 'auth-card' },
+      h('div', { class: 'auth-logo' },
+        h('h1', {}, 'ShieldWAF'),
+        h('p', {}, 'Web Application Firewall'),
+      ),
+      h('div', { class: 'auth-title' }, 'Masuk ke akun'),
+      STATE.error ? h('div', { class: 'alert alert-error' }, STATE.error) : null,
+      h('div', { class: 'form-group' },
+        h('label', { class: 'form-label' }, 'Email atau Username'),
+        emailEl = h('input', { class: 'form-input', type: 'text', placeholder: 'email@domain.com' }),
+      ),
+      h('div', { class: 'form-group' },
+        h('label', { class: 'form-label' }, 'Password'),
+        passEl = h('input', { class: 'form-input', type: 'password', placeholder: '••••••••' }),
+      ),
+      h('button', { class: 'btn btn-primary', onClick: async () => {
+        await doLogin(emailEl.value, passEl.value);
+      }}, STATE.loading ? 'Masuk...' : 'Masuk'),
+      h('div', { class: 'auth-switch' },
+        'Belum punya akun? ',
+        h('a', { onClick: () => setState({ page: 'register', error: null }) }, 'Daftar sekarang'),
+      ),
+    ),
+  );
+  // Enter key
+  [emailEl, passEl].forEach(el => el.addEventListener('keypress', e => {
+    if (e.key === 'Enter') doLogin(emailEl.value, passEl.value);
+  }));
+  return card;
+}
+
+// ─── Register ─────────────────────────────────────────────────────────────────
+function renderRegister() {
+  let nameEl, emailEl, usernameEl, passEl, pass2El;
+  return h('div', { class: 'auth-wrap' },
+    h('div', { class: 'auth-card' },
+      h('div', { class: 'auth-logo' },
+        h('h1', {}, 'ShieldWAF'),
+        h('p', {}, 'Web Application Firewall'),
+      ),
+      h('div', { class: 'auth-title' }, 'Buat akun baru'),
+      STATE.error ? h('div', { class: 'alert alert-error' }, STATE.error) : null,
+      h('div', { class: 'form-group' },
+        h('label', { class: 'form-label' }, 'Nama Lengkap'),
+        nameEl = h('input', { class: 'form-input', type: 'text', placeholder: 'Nama Lengkap' }),
+      ),
+      h('div', { class: 'form-group' },
+        h('label', { class: 'form-label' }, 'Email'),
+        emailEl = h('input', { class: 'form-input', type: 'email', placeholder: 'email@domain.com' }),
+      ),
+      h('div', { class: 'form-group' },
+        h('label', { class: 'form-label' }, 'Username'),
+        usernameEl = h('input', { class: 'form-input', type: 'text', placeholder: 'username' }),
+      ),
+      h('div', { class: 'form-group' },
+        h('label', { class: 'form-label' }, 'Password'),
+        passEl = h('input', { class: 'form-input', type: 'password', placeholder: 'Minimal 8 karakter' }),
+      ),
+      h('div', { class: 'form-group' },
+        h('label', { class: 'form-label' }, 'Konfirmasi Password'),
+        pass2El = h('input', { class: 'form-input', type: 'password', placeholder: 'Ulangi password' }),
+      ),
+      h('button', { class: 'btn btn-primary', onClick: async () => {
+        if (passEl.value !== pass2El.value) {
+          setState({ error: 'Password tidak cocok' }); return;
+        }
+        await doRegister({ full_name: nameEl.value, email: emailEl.value,
+                           username: usernameEl.value, password: passEl.value });
+      }}, STATE.loading ? 'Mendaftar...' : 'Daftar'),
+      h('div', { class: 'auth-switch' },
+        'Sudah punya akun? ',
+        h('a', { onClick: () => setState({ page: 'login', error: null }) }, 'Masuk'),
+      ),
+    ),
+  );
+}
+
+// ─── App Shell ────────────────────────────────────────────────────────────────
+function renderApp() {
+  return h('div', { class: 'app-shell' }, renderSidebar(), renderMainContent());
+}
+
+function renderSidebar() {
+  const u = STATE.user || {};
+  const navItem = (label, icon, pageKey) => h('div', {
+    class: `nav-item ${STATE.page === pageKey ? 'active' : ''}`,
+    onClick: async () => {
+      setState({ page: pageKey, error: null });
+      if (pageKey === 'sites') await loadSites();
+      if (pageKey === 'dashboard') { await loadSites(); await loadOverviewMetrics(); }
+    },
+  }, h('span', { html: icon }), label);
+
+  return h('nav', { class: 'sidebar' },
+    h('div', { class: 'sidebar-head' },
+      h('div', { class: 'sidebar-logo' }, '🛡 ShieldWAF',
+        h('span', {}, 'WAF as a Service'),
+      ),
+    ),
+    h('div', { class: 'sidebar-user' },
+      h('div', { class: 'sidebar-user-name' }, u.full_name || u.username || 'User'),
+      h('div', { class: 'sidebar-user-email' }, u.email || ''),
+    ),
+    h('div', { class: 'nav' },
+      h('div', { class: 'nav-section' }, 'Menu Utama'),
+      navItem('Dashboard', 'dashboard'),
+      navItem('Website Saya', '🌐', 'sites'),
+      h('div', { class: 'nav-section', style: 'margin-top:8px' }, 'Akun'),
+      navItem('Profil', '👤', 'profile'),
+    ),
+    h('div', { class: 'sidebar-foot' },
+      h('button', { class: 'btn btn-ghost', style: 'width:100%;justify-content:flex-start;gap:8px',
+        onClick: doLogout }, 'Keluar'),
+    ),
+  );
+}
+
+// ─── Main Content ─────────────────────────────────────────────────────────────
+function renderMainContent() {
+  const pages = {
+    dashboard:   renderDashboard,
+    sites:       renderSites,
+    'site-detail': renderSiteDetail,
+    profile:     renderProfile,
+  };
+  const fn = pages[STATE.page] || renderDashboard;
+  return h('div', { class: 'main' }, fn());
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const om = STATE.overviewMetrics || {};
+  const siteSummaries = om.sites || [];
+  const totalSites   = om.total_sites || STATE.sites.length;
+  const totalBlocked = om.total_blocked_24h || 0;
+  const overallABR   = om.overall_abr || 0;
+  const activeWAFs   = STATE.sites.filter(s => s.waf_enabled).length;
+
+  return h('div', {},
+    h('div', { class: 'topbar' },
+      h('div', {},
+        h('div', { class: 'topbar-title' }, '📊 Dashboard'),
+        h('div', { class: 'topbar-sub' }, 'Ringkasan keamanan semua website Anda'),
+      ),
+      h('div', { class: 'flex gap-2 items-center' },
+        h('span', { class: 'live-dot' }), h('span', { class: 'text-muted text-small' }, 'Live'),
+      ),
+    ),
+    h('div', { class: 'content' },
+      // Stats
+      h('div', { class: 'stats-grid' },
+        statCard('Website Terdaftar', totalSites, 'c-blue', 'Total domain dilindungi'),
+        statCard('WAF Aktif', activeWAFs, 'c-green', 'Proteksi berjalan'),
+        statCard('Serangan Diblokir', totalBlocked, 'c-red', 'Dalam 24 jam terakhir'),
+        statCard('ABR Overall', overallABR.toFixed(1) + '%', 'c-amber', 'Attack Block Rate rata-rata'),
+      ),
+      // Sites table
+      h('div', { class: 'card' },
+        h('div', { class: 'card-header' },
+          h('div', { class: 'card-title' }, 'Status Website'),
+          h('button', { class: 'btn btn-secondary btn-sm',
+            onClick: () => setState({ page: 'sites' }) }, 'Lihat Semua'),
+        ),
+        h('div', { class: 'table-wrap' },
+          STATE.sites.length === 0
+            ? h('div', { class: 'empty' },
+                h('div', { class: 'empty-icon' }, '🌐'),
+                h('div', { class: 'empty-title' }, 'Belum ada website'),
+                h('div', { class: 'empty-desc' }, 'Tambahkan website pertama Anda untuk mulai dilindungi WAF'),
+                h('button', { class: 'btn btn-primary', onClick: () => setState({ page: 'sites' }) }, '+ Tambah Website'),
+              )
+            : h('table', {},
+                h('thead', {}, h('tr', {},
+                  ...['Domain', 'Origin Server', 'WAF', 'ABR', 'Serangan/24h', 'Aksi'].map(t => h('th', {}, t)),
+                )),
+                h('tbody', {},
+                  ...STATE.sites.slice(0, 8).map(site => {
+                    const sm = siteSummaries.find(s => s.site_id === site.id) || {};
+                    return h('tr', {},
+                      h('td', {}, h('div', { style:'font-weight:600' }, site.domain), h('div', { class:'text-muted text-small' }, site.name)),
+                      h('td', { class: 'mono text-small text-muted' }, site.origin_url),
+                      h('td', {}, site.waf_enabled ? h('span', { class:'badge badge-green' }, 'Aktif') : h('span', { class:'badge badge-gray' }, 'Off')),
+                      h('td', {}, h('span', { style:`font-weight:700;color:${(sm.abr||0)>80?'var(--green)':'var(--amber)'}` }, (sm.abr||0).toFixed(1)+'%')),
+                      h('td', {}, sm.attacks_blocked || 0),
+                      h('td', {}, h('button', { class:'btn btn-secondary btn-sm', onClick: () => loadSiteDetail(site) }, 'Detail')),
+                    );
+                  }),
+                ),
+              ),
+        ),
+      ),
+    ),
+  );
+}
+
+function statCard(label, value, cls, meta) {
+  return h('div', { class: `stat ${cls}` },
+    h('div', { class: 'stat-label' }, label),
+    h('div', { class: 'stat-value' }, value),
+    h('div', { class: 'stat-meta' }, meta),
+  );
+}
+
+// ─── Sites List ───────────────────────────────────────────────────────────────
+function renderSites() {
+  return h('div', {},
+    h('div', { class: 'topbar' },
+      h('div', {},
+        h('div', { class: 'topbar-title' }, 'Website Saya'),
+        h('div', { class: 'topbar-sub' }, 'Kelola domain yang dilindungi WAF'),
+      ),
+      h('button', { class: 'btn btn-primary', onClick: () => setState({ modal: 'add-site', error: null }) },
+        '+ Tambah Website'),
+    ),
+    h('div', { class: 'content' },
+      STATE.sites.length === 0
+        ? h('div', { class: 'empty' },
+            h('div', { class: 'empty-icon' }, '🌐'),
+            h('div', { class: 'empty-title' }, 'Belum ada website terdaftar'),
+            h('div', { class: 'empty-desc' }, 'Tambahkan website pertama Anda. WAF akan langsung aktif dan mulai melindungi dari serangan SQLi, XSS, Scraping, dan Hotlinking.'),
+            h('button', { class: 'btn btn-primary', onClick: () => setState({ modal: 'add-site', error: null }) },
+              '+ Tambah Website Pertama'),
+          )
+        : h('div', { class: 'sites-grid' },
+            ...STATE.sites.map(renderSiteCard),
+          ),
+    ),
+  );
+}
+
+function renderSiteCard(site) {
+  return h('div', { class: 'site-card', onClick: () => loadSiteDetail(site) },
+    h('div', { class: 'site-card-head' },
+      h('div', {},
+        h('div', { class: 'site-domain' }, site.domain),
+        h('div', { class: 'site-name' }, site.name),
+      ),
+      site.waf_enabled
+        ? h('span', { class: 'badge badge-green' }, 'WAF Aktif')
+        : h('span', { class: 'badge badge-gray' }, 'WAF Off'),
+    ),
+    h('div', { class: 'text-muted text-small mono', style: 'margin-top:8px' }, site.origin_url),
+    h('div', { class: 'site-meta' },
+      site.block_scraping   ? h('span', { class: 'badge badge-blue' }, 'Anti-Scraping') : null,
+      site.block_hotlinking ? h('span', { class: 'badge badge-blue' }, 'Anti-Hotlink') : null,
+      site.block_referer_bypass ? h('span', { class: 'badge badge-blue' }, 'Referer Check') : null,
+    ),
+    h('div', { class: 'site-actions' },
+      h('button', { class: 'btn btn-secondary btn-sm flex-1',
+        onClick: e => { e.stopPropagation(); loadSiteDetail(site); } }, 'Dashboard'),
+      h('button', { class: 'btn btn-secondary btn-sm',
+        onClick: e => { e.stopPropagation(); toggleWAF(site.id); } },
+        site.waf_enabled ? 'Nonaktifkan' : 'Aktifkan'),
+    ),
+  );
+}
+
+// ─── Site Detail ──────────────────────────────────────────────────────────────
+function renderSiteDetail() {
+  const site = STATE.currentSite;
+  if (!site) return h('div', { class: 'content' }, 'Site tidak ditemukan');
+  const m = STATE.metrics || {};
+
+  const TAG_COLORS = {
+    SQLi:         { bg: '#fef2f2', color: '#991b1b' },
+    XSS:          { bg: '#fef2f2', color: '#991b1b' },
+    AntiScraping: { bg: '#fffbeb', color: '#92400e' },
+    Hotlinking:   { bg: '#f5f3ff', color: '#4c1d95' },
+    RefererBypass:{ bg: '#fff7ed', color: '#9a3412' },
+    LFI:          { bg: '#fffbeb', color: '#92400e' },
+    SSRF:         { bg: '#fef2f2', color: '#991b1b' },
+  };
+
+  return h('div', {},
+    h('div', { class: 'topbar' },
+      h('div', { class: 'flex items-center gap-3' },
+        h('button', { class: 'btn btn-ghost btn-sm', onClick: () => setState({ page: 'sites' }) }, '← Kembali'),
+        h('div', {},
+          h('div', { class: 'topbar-title' }, site.domain),
+          h('div', { class: 'topbar-sub' }, site.name + ' — ' + site.origin_url),
+        ),
+      ),
+      h('div', { class: 'flex gap-2' },
+        h('button', { class: 'btn btn-secondary btn-sm',
+          onClick: () => generateDemoData(site.id) }, 'Generate Demo Data'),
+        h('button', { class: `btn btn-sm ${site.waf_enabled ? 'btn-danger' : 'btn-secondary'}`,
+          onClick: () => toggleWAF(site.id) },
+          site.waf_enabled ? '⏸ Nonaktifkan WAF' : 'Aktifkan WAF'),
+        h('button', { class: 'btn btn-secondary btn-sm',
+          onClick: () => setState({ modal: 'edit-site', error: null }) }, '⚙ Pengaturan'),
+        h('button', { class: 'btn btn-danger btn-sm',
+          onClick: () => setState({ modal: 'delete-site' }) }, '🗑'),
+      ),
+    ),
+    h('div', { class: 'content' },
+      // Stats
+      h('div', { class: 'stats-grid' },
+        statCard('Serangan Diblokir', m.attacks_blocked || 0, 'c-red', 'Total dari log'),
+        statCard('ABR', (m.abr || 0).toFixed(1) + '%', 'c-amber', 'Attack Block Rate'),
+        statCard('FPR', (m.fpr || 0).toFixed(2) + '%', 'c-green', 'Target < 1%'),
+        statCard('FNR', (m.fnr || 0).toFixed(2) + '%', 'c-purple', 'Target < 5%'),
+      ),
+      h('div', { class: 'grid-2', style: 'gap:16px' },
+        // Attack distribution
+        h('div', { class: 'card' },
+          h('div', { class: 'card-header' }, h('div', { class: 'card-title' }, 'Distribusi Serangan')),
+          h('div', { class: 'card-body' },
+            Object.keys(m.tag_distribution || {}).length === 0
+              ? h('div', { class: 'text-muted text-small', style: 'padding:20px 0;text-align:center' },
+                  'Belum ada data. Klik "Generate Demo Data" untuk mencoba.')
+              : h('div', {},
+                  ...Object.entries(m.tag_distribution || {}).sort((a,b) => b[1]-a[1]).map(([tag, count]) => {
+                    const c = TAG_COLORS[tag] || { bg: '#f1f5f9', color: '#475569' };
+                    const total = m.attacks_blocked || 1;
+                    const pct = Math.round(count / total * 100);
+                    return h('div', { style: 'margin-bottom:12px' },
+                      h('div', { style: 'display:flex;justify-content:space-between;margin-bottom:4px' },
+                        h('span', { style: `font-size:12px;font-weight:600;padding:2px 8px;border-radius:4px;background:${c.bg};color:${c.color}` }, tag),
+                        h('span', { style: 'font-size:12px;font-weight:700;font-family:monospace' }, count + ' kali'),
+                      ),
+                      h('div', { style: 'height:5px;background:#f1f5f9;border-radius:99px;overflow:hidden' },
+                        h('div', { style: `height:100%;width:${pct}%;background:${c.color};border-radius:99px;transition:width 0.5s` }),
+                      ),
+                    );
+                  }),
+                ),
+          ),
+        ),
+        // Metrics detail
+        h('div', { class: 'card' },
+          h('div', { class: 'card-header' }, h('div', { class: 'card-title' }, 'Metrik Performa')),
+          h('div', { class: 'card-body' },
+            h('table', { style: 'width:100%;font-size:13px' },
+              h('tbody', {},
+                ...[
+                  ['Total Request', m.total_requests || 0],
+                  ['Serangan Terdeteksi', m.attacks_total || 0],
+                  ['Serangan Diblokir', m.attacks_blocked || 0],
+                  ['Serangan Lolos (FN)', m.attacks_passed || 0],
+                  ['Request Sah Diblokir (FP)', m.legit_blocked || 0],
+                  ['Response Time Mean', (m.rt_mean || 0).toFixed(1) + ' ms'],
+                  ['Response Time P95', (m.rt_p95 || 0).toFixed(1) + ' ms'],
+                  ['Response Time P99', (m.rt_p99 || 0).toFixed(1) + ' ms'],
+                ].map(([k, v]) => h('tr', {},
+                  h('td', { style: 'color:var(--muted);padding:8px 0;border-bottom:1px solid var(--border)' }, k),
+                  h('td', { style: 'text-align:right;font-weight:600;font-family:monospace;border-bottom:1px solid var(--border)' }, String(v)),
+                )),
+              ),
+            ),
+          ),
+        ),
+      ),
+      // Logs
+      h('div', { class: 'card', style: 'margin-top:16px' },
+        h('div', { class: 'card-header' },
+          h('div', { class: 'card-title' }, 'Log Serangan Terbaru'),
+          h('span', { class: 'text-muted text-small' }, STATE.logs.length + ' entri'),
+        ),
+        h('div', { class: 'card-body', style: 'padding-top:8px;max-height:400px;overflow-y:auto' },
+          STATE.logs.length === 0
+            ? h('div', { style: 'text-align:center;padding:30px;color:var(--muted);font-size:13px' },
+                'Belum ada log. Klik "Generate Demo Data" untuk simulasi data serangan.')
+            : h('div', {},
+                ...STATE.logs.slice(0, 30).map(log => {
+                  const c = TAG_COLORS[log.attack_type] || { bg: '#f1f5f9', color: '#475569' };
+                  const ts = new Date(log.timestamp).toLocaleTimeString('id-ID');
+                  return h('div', { class: 'log-entry' },
+                    h('span', { class: 'log-type', style: `background:${c.bg};color:${c.color}` }, log.attack_type || 'Unknown'),
+                    h('span', { class: 'log-ip' }, log.client_ip || '—'),
+                    h('span', { class: 'log-msg' }, log.message || log.uri || '—'),
+                    h('span', { class: 'log-time' }, ts),
+                  );
+                }),
+              ),
+        ),
+      ),
+    ),
+  );
+}
+
+// ─── Profile ──────────────────────────────────────────────────────────────────
+function renderProfile() {
+  const u = STATE.user || {};
+  let nameEl, oldPwEl, newPwEl;
+  return h('div', {},
+    h('div', { class: 'topbar' },
+      h('div', {},
+        h('div', { class: 'topbar-title' }, '👤 Profil'),
+        h('div', { class: 'topbar-sub' }, 'Kelola informasi akun Anda'),
+      ),
+    ),
+    h('div', { class: 'content' },
+      h('div', { class: 'card', style: 'max-width:500px' },
+        h('div', { class: 'card-header' }, h('div', { class: 'card-title' }, 'Informasi Akun')),
+        h('div', { class: 'card-body' },
+          h('div', { class: 'form-group' },
+            h('label', { class: 'form-label' }, 'Email'),
+            h('input', { class: 'form-input', type: 'text', value: u.email || '', disabled: true,
+              style: 'background:var(--bg3);color:var(--muted)' }),
+          ),
+          h('div', { class: 'form-group' },
+            h('label', { class: 'form-label' }, 'Username'),
+            h('input', { class: 'form-input', type: 'text', value: u.username || '', disabled: true,
+              style: 'background:var(--bg3);color:var(--muted)' }),
+          ),
+          h('div', { class: 'form-group' },
+            h('label', { class: 'form-label' }, 'Nama Lengkap'),
+            nameEl = h('input', { class: 'form-input', type: 'text', value: u.full_name || '',
+              placeholder: 'Nama Lengkap' }),
+          ),
+          h('hr', { class: 'divider' }),
+          h('div', { style: 'font-size:13px;font-weight:600;margin-bottom:12px' }, 'Ganti Password'),
+          h('div', { class: 'form-group' },
+            h('label', { class: 'form-label' }, 'Password Lama'),
+            oldPwEl = h('input', { class: 'form-input', type: 'password', placeholder: '••••••••' }),
+          ),
+          h('div', { class: 'form-group' },
+            h('label', { class: 'form-label' }, 'Password Baru'),
+            newPwEl = h('input', { class: 'form-input', type: 'password', placeholder: 'Minimal 8 karakter' }),
+          ),
+          h('button', { class: 'btn btn-primary', style: 'margin-top:4px',
+            onClick: async () => {
+              const body = { full_name: nameEl.value };
+              if (newPwEl.value) { body.password = newPwEl.value; body.old_password = oldPwEl.value; }
+              try {
+                const r = await api('PUT', '/api/auth/profile', body);
+                setState({ user: r.user });
+                notify('Profil berhasil diperbarui');
+              } catch (e) { notify(e.message, 'error'); }
+            }}, 'Simpan Perubahan'),
+        ),
+      ),
+    ),
+  );
+}
+
+// ─── Modals ───────────────────────────────────────────────────────────────────
+function renderModal() {
+  if (STATE.modal === 'add-site')   return renderAddSiteModal();
+  if (STATE.modal === 'edit-site')  return renderEditSiteModal();
+  if (STATE.modal === 'delete-site')return renderDeleteSiteModal();
+  return null;
+}
+
+function renderAddSiteModal() {
+  let nameEl, domainEl, originEl, descEl,
+      scrapingEl, hotlinkEl, refererEl, rateEl, paranoiaEl, threshEl;
+
+  const close = () => setState({ modal: null, error: null });
+
+  return h('div', { class: 'modal-overlay', onClick: e => e.target === e.currentTarget && close() },
+    h('div', { class: 'modal' },
+      h('div', { class: 'modal-head' },
+        h('div', { class: 'modal-title' }, '+ Tambah Website Baru'),
+        h('button', { class: 'modal-close', onClick: close }, '×'),
+      ),
+      h('div', { class: 'modal-body' },
+        STATE.error ? h('div', { class: 'alert alert-error' }, STATE.error) : null,
+
+        h('div', { class: 'form-group' },
+          h('label', { class: 'form-label' }, 'Nama Website *'),
+          nameEl = h('input', { class: 'form-input', type: 'text', placeholder: 'contoh: Toko Online Saya' }),
+        ),
+        h('div', { class: 'form-row' },
+          h('div', { class: 'form-group' },
+            h('label', { class: 'form-label' }, 'Domain *'),
+            domainEl = h('input', { class: 'form-input', type: 'text', placeholder: 'myapp.com' }),
+            h('div', { class: 'form-hint' }, 'Tanpa http://, contoh: myapp.com'),
+          ),
+          h('div', { class: 'form-group' },
+            h('label', { class: 'form-label' }, 'Origin Server URL *'),
+            originEl = h('input', { class: 'form-input', type: 'text', placeholder: 'http://192.168.1.10:8080' }),
+            h('div', { class: 'form-hint' }, 'IP/domain server asli Anda'),
+          ),
+        ),
+        h('div', { class: 'form-group' },
+          h('label', { class: 'form-label' }, 'Deskripsi'),
+          descEl = h('input', { class: 'form-input', type: 'text', placeholder: 'Opsional' }),
+        ),
+
+        h('hr', { class: 'divider' }),
+        h('div', { style: 'font-size:13px;font-weight:700;margin-bottom:12px' }, '⚙ Konfigurasi WAF'),
+
+        h('div', { class: 'form-row' },
+          h('div', { class: 'form-group' },
+            h('label', { class: 'form-label' }, 'Rate Limit (req/menit)'),
+            rateEl = h('input', { class: 'form-input', type: 'number', value: '100', min: '1', max: '10000' }),
+          ),
+          h('div', { class: 'form-group' },
+            h('label', { class: 'form-label' }, 'Anomaly Threshold'),
+            threshEl = h('input', { class: 'form-input', type: 'number', value: '5', min: '1', max: '20' }),
+            h('div', { class: 'form-hint' }, 'Semakin rendah = semakin ketat'),
+          ),
+        ),
+        h('div', { class: 'form-group' },
+          h('label', { class: 'form-label' }, 'Paranoia Level (1-4)'),
+          paranoiaEl = h('input', { class: 'form-input', type: 'number', value: '1', min: '1', max: '4' }),
+          h('div', { class: 'form-hint' }, 'Level 1 = default, Level 4 = sangat ketat (FPR tinggi)'),
+        ),
+
+        h('div', { style: 'margin-top:12px' },
+          toggleRow('Anti Web Scraping', 'Blokir bot dan agen scraping otomatis', true, el => scrapingEl = el),
+          toggleRow('Anti Hotlinking', 'Cegah embed aset dari domain asing', true, el => hotlinkEl = el),
+          toggleRow('Referer Bypass Protection', 'Validasi HTTP Referer header', true, el => refererEl = el),
+        ),
+      ),
+      h('div', { class: 'modal-foot' },
+        h('button', { class: 'btn btn-secondary', onClick: close }, 'Batal'),
+        h('button', { class: 'btn btn-primary', onClick: () => createSite({
+          name:                  nameEl.value,
+          domain:                domainEl.value,
+          origin_url:            originEl.value,
+          description:           descEl.value,
+          rate_limit_rpm:        parseInt(rateEl.value) || 100,
+          anomaly_threshold:     parseInt(threshEl.value) || 5,
+          paranoia_level:        parseInt(paranoiaEl.value) || 1,
+          block_scraping:        scrapingEl?.checked ?? true,
+          block_hotlinking:      hotlinkEl?.checked ?? true,
+          block_referer_bypass:  refererEl?.checked ?? true,
+          waf_enabled:           true,
+        })}, STATE.loading ? 'Menambahkan...' : '+ Tambah & Aktifkan WAF'),
+      ),
+    ),
+  );
+}
+
+function renderEditSiteModal() {
+  const site = STATE.currentSite;
+  if (!site) return null;
+  let scrapingEl, hotlinkEl, refererEl, rateEl, paranoiaEl, threshEl, wafEl;
+  const close = () => setState({ modal: null, error: null });
+
+  return h('div', { class: 'modal-overlay', onClick: e => e.target === e.currentTarget && close() },
+    h('div', { class: 'modal' },
+      h('div', { class: 'modal-head' },
+        h('div', { class: 'modal-title' }, '⚙ Pengaturan WAF — ' + site.domain),
+        h('button', { class: 'modal-close', onClick: close }, '×'),
+      ),
+      h('div', { class: 'modal-body' },
+        STATE.error ? h('div', { class: 'alert alert-error' }, STATE.error) : null,
+        h('div', { class: 'form-row' },
+          h('div', { class: 'form-group' },
+            h('label', { class: 'form-label' }, 'Rate Limit (req/menit)'),
+            rateEl = h('input', { class: 'form-input', type: 'number', value: site.rate_limit_rpm }),
+          ),
+          h('div', { class: 'form-group' },
+            h('label', { class: 'form-label' }, 'Anomaly Threshold'),
+            threshEl = h('input', { class: 'form-input', type: 'number', value: site.anomaly_threshold }),
+          ),
+        ),
+        h('div', { class: 'form-group' },
+          h('label', { class: 'form-label' }, 'Paranoia Level (1-4)'),
+          paranoiaEl = h('input', { class: 'form-input', type: 'number', value: site.paranoia_level, min: '1', max: '4' }),
+        ),
+        h('div', { style: 'margin-top:12px' },
+          toggleRow('WAF Aktif', 'Aktifkan/nonaktifkan WAF untuk site ini', site.waf_enabled, el => wafEl = el),
+          toggleRow('Anti Scraping', '', site.block_scraping, el => scrapingEl = el),
+          toggleRow('Anti Hotlinking', '', site.block_hotlinking, el => hotlinkEl = el),
+          toggleRow('Referer Bypass Protection', '', site.block_referer_bypass, el => refererEl = el),
+        ),
+      ),
+      h('div', { class: 'modal-foot' },
+        h('button', { class: 'btn btn-secondary', onClick: close }, 'Batal'),
+        h('button', { class: 'btn btn-primary', onClick: () => updateSite(site.id, {
+          rate_limit_rpm:      parseInt(rateEl.value),
+          anomaly_threshold:   parseInt(threshEl.value),
+          paranoia_level:      parseInt(paranoiaEl.value),
+          waf_enabled:         wafEl?.checked ?? site.waf_enabled,
+          block_scraping:      scrapingEl?.checked ?? site.block_scraping,
+          block_hotlinking:    hotlinkEl?.checked ?? site.block_hotlinking,
+          block_referer_bypass:refererEl?.checked ?? site.block_referer_bypass,
+        })}, STATE.loading ? 'Menyimpan...' : 'Simpan Pengaturan'),
+      ),
+    ),
+  );
+}
+
+function renderDeleteSiteModal() {
+  const site = STATE.currentSite;
+  if (!site) return null;
+  const close = () => setState({ modal: null });
+  return h('div', { class: 'modal-overlay', onClick: e => e.target === e.currentTarget && close() },
+    h('div', { class: 'modal' },
+      h('div', { class: 'modal-head' },
+        h('div', { class: 'modal-title' }, '🗑 Hapus Website'),
+        h('button', { class: 'modal-close', onClick: close }, '×'),
+      ),
+      h('div', { class: 'modal-body' },
+        h('div', { class: 'alert alert-error' },
+          `Anda akan menghapus ${site.domain} beserta semua log dan konfigurasi WAF-nya. Tindakan ini tidak dapat dibatalkan.`),
+      ),
+      h('div', { class: 'modal-foot' },
+        h('button', { class: 'btn btn-secondary', onClick: close }, 'Batal'),
+        h('button', { class: 'btn btn-danger', onClick: () => deleteSite(site.id) },
+          STATE.loading ? 'Menghapus...' : '🗑 Ya, Hapus'),
+      ),
+    ),
+  );
+}
+
+function toggleRow(label, desc, defaultVal, ref) {
+  let input;
+  const row = h('div', { class: 'toggle-row' },
+    h('div', {},
+      h('div', { class: 'toggle-label' }, label),
+      desc ? h('div', { class: 'toggle-desc' }, desc) : null,
+    ),
+    h('label', { class: 'toggle' },
+      input = h('input', { type: 'checkbox', ...(defaultVal ? { checked: true } : {}) }),
+      h('div', { class: 'toggle-track' }),
+    ),
+  );
+  if (ref) ref(input);
+  return row;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function init() {
+  if (STATE.token) {
+    await loadMe();
+    if (STATE.user) {
+      setState({ page: 'dashboard' });
+      await loadSites();
+      await loadOverviewMetrics();
+    }
+  }
+  render();
+}
+
+init();
+</script>
+</body>
+</html>

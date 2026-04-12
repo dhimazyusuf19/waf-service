@@ -1,0 +1,99 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.waf
+# Nginx + ModSecurity v3 + OWASP CRS v4
+# Ubuntu Server 24.04 LTS (sesuai spesifikasi proposal)
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM ubuntu:24.04
+
+LABEL maintainer="Taqiya Nabilla Nathania Afnani <2221101859@pssn.ac.id>"
+LABEL description="WAF berbasis ModSecurity + Nginx + OWASP CRS"
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV NGINX_VERSION=1.26.2
+ENV MODSEC_VERSION=3.0.13
+
+# ─── Install dependencies ───
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpcre3 libpcre3-dev \
+    zlib1g zlib1g-dev \
+    libssl-dev \
+    libgeoip-dev \
+    libxml2 libxml2-dev \
+    libcurl4-openssl-dev \
+    libyajl-dev \
+    lua5.3-dev \
+    libfuzzy-dev \
+    git \
+    wget \
+    curl \
+    automake \
+    libtool \
+    pkg-config \
+    libmaxminddb-dev \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# ─── Build libmodsecurity3 ───
+RUN git clone --depth 1 -b v${MODSEC_VERSION} \
+    https://github.com/SpiderLabs/ModSecurity /tmp/modsecurity \
+    && cd /tmp/modsecurity \
+    && git submodule init \
+    && git submodule update \
+    && ./build.sh \
+    && ./configure \
+    && make -j$(nproc) \
+    && make install \
+    && rm -rf /tmp/modsecurity
+
+# ─── Download & Build Nginx with ModSecurity connector ───
+RUN wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz -P /tmp \
+    && git clone --depth 1 \
+       https://github.com/SpiderLabs/ModSecurity-nginx /tmp/modsecurity-nginx \
+    && cd /tmp \
+    && tar xzf nginx-${NGINX_VERSION}.tar.gz \
+    && cd nginx-${NGINX_VERSION} \
+    && ./configure \
+       --prefix=/etc/nginx \
+       --sbin-path=/usr/sbin/nginx \
+       --modules-path=/usr/lib64/nginx/modules \
+       --conf-path=/etc/nginx/nginx.conf \
+       --error-log-path=/var/log/nginx/error.log \
+       --http-log-path=/var/log/nginx/access.log \
+       --pid-path=/var/run/nginx.pid \
+       --with-http_ssl_module \
+       --with-http_v2_module \
+       --with-http_realip_module \
+       --with-http_gzip_static_module \
+       --with-http_stub_status_module \
+       --with-pcre \
+       --with-stream \
+       --add-dynamic-module=/tmp/modsecurity-nginx \
+    && make -j$(nproc) \
+    && make install \
+    && rm -rf /tmp/nginx-* /tmp/modsecurity-nginx
+
+# ─── Install OWASP Core Rule Set v4 ───
+RUN git clone --depth 1 -b v4.7.0 \
+    https://github.com/coreruleset/coreruleset /etc/nginx/modsecurity/crs \
+    && cp /etc/nginx/modsecurity/crs/crs-setup.conf.example \
+          /etc/nginx/modsecurity/crs/crs-setup.conf
+
+# ─── Create required directories ───
+RUN mkdir -p \
+    /etc/nginx/modsecurity/custom-rules \
+    /etc/nginx/conf.d \
+    /var/log/modsecurity \
+    /var/log/nginx \
+    /etc/nginx/ssl
+
+# ─── Copy ModSecurity unicode map ───
+RUN cp /etc/nginx/modsecurity/crs/plugins/CHANGES.md \
+       /etc/nginx/modsecurity/ 2>/dev/null || true
+
+EXPOSE 80 443
+
+STOPSIGNAL SIGTERM
+
+CMD ["nginx", "-g", "daemon off;"]
