@@ -67,9 +67,11 @@ Set variabel berikut di dashboard ClawCloud → **Environment Variables**:
 | `DATABASE_URL` | `postgresql://user:pass@host:5432/db` | Koneksi PostgreSQL (wajib) |
 | `SECRET_KEY` | `random-string-min-32-chars` | Flask secret key (wajib) |
 | `JWT_SECRET_KEY` | `random-string-min-32-chars` | JWT signing key (wajib) |
+| `CORS_ORIGINS` | `https://your-frontend.clawcloud.app` | Comma-separated allowed origins untuk CORS |
 | `NGINX_CONF_DIR` | `/tmp/waf-nginx-sites` | Dir untuk config Nginx yang di-generate |
 | `MODSEC_RULES_DIR` | `/tmp/waf-modsec-sites` | Dir untuk rules ModSecurity yang di-generate |
 | `LOG_DIR` | `/tmp/waf-logs` | Dir untuk log ModSecurity |
+| `NGINX_LOG_DIR` | `/tmp/waf-nginx-logs` | Dir untuk log Nginx yang di-generate |
 
 > **Catatan:** Salin `.env.example` ke `.env` untuk development lokal.
 
