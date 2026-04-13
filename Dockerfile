@@ -5,6 +5,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Install system dependencies (nginx for config generation at runtime)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         nginx \
     && rm -rf /var/lib/apt/lists/* \
@@ -13,13 +14,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && mkdir -p /etc/nginx/conf.d /etc/nginx/modsecurity/sites /var/log/modsecurity \
     && chown -R appuser:appgroup /etc/nginx/conf.d /etc/nginx/modsecurity/sites /var/log/modsecurity
 
-COPY requirements.txt .
+# Copy and install Python dependencies first for layer caching
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --chown=appuser:appgroup . .
+# Copy application source
+COPY --chown=appuser:appgroup backend/ .
 
 USER appuser
 
-EXPOSE 5000
+# Default port — override with PORT env var at runtime
+EXPOSE 8000
 
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 4 --timeout 120 wsgi:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 4 --timeout 120 wsgi:app"]
