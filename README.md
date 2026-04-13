@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # ShieldWAF — WAF as a Service
 
 **Tugas Akhir — Taqiya Nabilla Nathania Afnani (2221101859)**
@@ -44,6 +43,12 @@ Klik **Daftar sekarang** → isi form → tambah website → WAF aktif!
 
 ---
 
+## Deploy ke ClawCloud
+
+Repo ini mendukung dua mode deploy di ClawCloud: **via Dockerfile** (direkomendasikan) atau **via Python runtime** (build + start command). Lihat panduan lengkap di **[DEPLOYMENT.md](DEPLOYMENT.md)** untuk cara menentukan mode mana yang tersedia di dashboard ClawCloud kamu dan cara mengonfigurasinya.
+
+---
+
 ## Struktur Proyek
 
 ```
@@ -56,6 +61,7 @@ waf-saas-final/
 ├── scripts/          SSL generation + testing scripts
 ├── docker-compose.yml
 ├── .env
+├── DEPLOYMENT.md     Panduan deploy ke ClawCloud
 ├── MASTERPLAN.md     Masterplan lengkap penelitian
 └── README.md
 ```
@@ -112,6 +118,3 @@ python3 scripts/testing/comparative.py \
 ---
 
 *PSSN 2026 — Rekayasa Keamanan Siber*
-=======
-# WAF Service
->>>>>>> d589f511f740b7e402e55220c3e1c65131c14b04
