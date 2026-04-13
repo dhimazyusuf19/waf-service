@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # ShieldWAF — WAF as a Service
 
 **Tugas Akhir — Taqiya Nabilla Nathania Afnani (2221101859)**
@@ -20,7 +19,7 @@ register/login, tambah domain, dan monitoring serangan per site.
 
 ---
 
-## Cara Cepat Menjalankan
+## Cara Cepat Menjalankan (Full Stack)
 
 ### 1. Generate SSL
 
@@ -44,6 +43,71 @@ Klik **Daftar sekarang** → isi form → tambah website → WAF aktif!
 
 ---
 
+## Deploy ke ClawCloud (Backend API Only)
+
+Untuk deploy hanya **Backend API** ke ClawCloud (PaaS), ikuti langkah berikut.
+
+### Build & Start Command
+
+ClawCloud akan otomatis detect `Dockerfile` di root repository.
+
+| Setting | Value |
+|---------|-------|
+| **Dockerfile path** | `Dockerfile` (root) |
+| **Port** | `8000` (atau set via env `PORT`) |
+| **Health check path** | `/health` |
+
+### Required Environment Variables
+
+Set variabel berikut di dashboard ClawCloud → **Environment Variables**:
+
+| Variable | Contoh | Keterangan |
+|----------|--------|------------|
+| `PORT` | `8000` | Port yang didengarkan server (ClawCloud inject otomatis) |
+| `DATABASE_URL` | `postgresql://user:pass@host:5432/db` | Koneksi PostgreSQL (wajib) |
+| `SECRET_KEY` | `random-string-min-32-chars` | Flask secret key (wajib) |
+| `JWT_SECRET_KEY` | `random-string-min-32-chars` | JWT signing key (wajib) |
+| `NGINX_CONF_DIR` | `/tmp/waf-nginx-sites` | Dir untuk config Nginx yang di-generate |
+| `MODSEC_RULES_DIR` | `/tmp/waf-modsec-sites` | Dir untuk rules ModSecurity yang di-generate |
+| `LOG_DIR` | `/tmp/waf-logs` | Dir untuk log ModSecurity |
+
+> **Catatan:** Salin `.env.example` ke `.env` untuk development lokal.
+
+### Langkah Deploy di ClawCloud
+
+1. Buka dashboard ClawCloud → **New App**
+2. Pilih **Deploy from GitHub** → pilih repo `dhimazyusuf19/waf-service`
+3. ClawCloud otomatis detect `Dockerfile` di root
+4. Set environment variables di atas
+5. Klik **Deploy**
+
+### Start Command Manual (tanpa Docker)
+
+Jika ClawCloud tidak pakai Docker:
+
+```bash
+# Build command
+pip install -r backend/requirements.txt
+
+# Start command
+cd backend && gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 4 --timeout 120 wsgi:app
+```
+
+### Health Check
+
+API menyediakan endpoint health check untuk platform monitoring:
+
+```
+GET /health
+```
+
+Response:
+```json
+{"status": "ok", "service": "WAF SaaS API", "version": "1.0.0"}
+```
+
+---
+
 ## Struktur Proyek
 
 ```
@@ -54,8 +118,10 @@ waf-saas-final/
 ├── nginx/            Konfigurasi Nginx
 ├── modsecurity/      Custom rules + OWASP CRS setup
 ├── scripts/          SSL generation + testing scripts
+├── Dockerfile        Root Dockerfile untuk ClawCloud deployment
+├── .dockerignore     Docker build exclusions
+├── .env.example      Template environment variables
 ├── docker-compose.yml
-├── .env
 ├── MASTERPLAN.md     Masterplan lengkap penelitian
 └── README.md
 ```
@@ -66,6 +132,7 @@ waf-saas-final/
 
 | Method | Endpoint | Deskripsi |
 |--------|----------|-----------|
+| GET | `/health` | Health check (platform monitoring) |
 | POST | `/api/auth/register` | Daftar akun baru |
 | POST | `/api/auth/login` | Login, dapat JWT |
 | GET | `/api/auth/me` | Profil user aktif |
@@ -112,6 +179,3 @@ python3 scripts/testing/comparative.py \
 ---
 
 *PSSN 2026 — Rekayasa Keamanan Siber*
-=======
-# WAF Service
->>>>>>> d589f511f740b7e402e55220c3e1c65131c14b04

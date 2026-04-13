@@ -61,6 +61,7 @@ def create_app():
     app.register_blueprint(rules_bp,   url_prefix="/api/rules")
 
     # ─── Health check ──────────────────────────────────────────────────────
+    @app.route("/health")
     @app.route("/api/health")
     def health():
         return {"status": "ok", "service": "WAF SaaS API", "version": "1.0.0"}
