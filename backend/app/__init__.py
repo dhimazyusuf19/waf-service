@@ -45,9 +45,14 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
     bcrypt.init_app(app)
-    CORS(app, origins=["http://localhost:3000", "http://localhost:80",
-                        "https://waf.local", "http://waf.local"],
-         supports_credentials=True)
+
+    _default_origins = "http://localhost:3000,http://localhost:80,https://waf.local,http://waf.local"
+    _cors_origins = [
+        o.strip()
+        for o in os.environ.get("CORS_ORIGINS", _default_origins).split(",")
+        if o.strip()
+    ]
+    CORS(app, origins=_cors_origins, supports_credentials=True)
 
     # ─── Register Blueprints ───────────────────────────────────────────────
     from app.routes.auth    import auth_bp
