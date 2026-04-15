@@ -106,6 +106,46 @@ Response:
 {"status": "ok", "service": "WAF SaaS API", "version": "1.0.0"}
 ```
 
+### ClawCloud Overview page: checking status and public URL
+
+Setelah deploy, buka halaman **Overview** service di dashboard ClawCloud. Berikut cara membaca informasi yang tampil:
+
+#### Status Service
+
+Di bagian atas halaman terdapat status service:
+
+| Status | Arti |
+|--------|------|
+| **Creating** | Container sedang dibuat atau belum berhasil start. Tunggu beberapa saat, lalu cek tab **Logs** jika status tidak berubah. |
+| **Running** | Service sudah berjalan normal. |
+| **Error / Failed** | Service gagal start — buka tab **Logs** untuk melihat pesan error. |
+
+> **Tip:** Jika status tetap *Creating* lama, periksa tab **Logs** untuk error seperti port mismatch, dependency missing, atau environment variable yang belum di-set.
+
+#### Bagian Network — Port Mapping & Alamat
+
+Di bagian **Network** (contoh: "Network (1)"), ClawCloud menampilkan pemetaan port dan alamat akses service:
+
+| Field | Contoh | Keterangan |
+|-------|--------|------------|
+| **Port** | `80` | Port yang di-expose ke publik. Pastikan aplikasi listen di port yang sesuai (set via env `PORT`). |
+| **Private Address** | `http://waf.ns-xxxxxxxx.svc.cluster.local:80` | URL internal cluster — dipakai antar-service di dalam ClawCloud (tidak bisa diakses dari luar). |
+| **Public Address** | `https://xxxxxxxxxxxxxx.ap-southeast-1.clawcloudrun.com` | URL publik yang bisa diakses dari internet. Gunakan ini untuk membuka API atau mengisi konfigurasi reverse proxy. |
+
+**Langkah verifikasi setelah deploy:**
+
+1. Pastikan status berubah dari *Creating* → *Running*.
+2. Salin **Public Address** dari bagian Network.
+3. Buka URL tersebut di browser atau dengan `curl`:
+   ```bash
+   curl https://<public-address>/health
+   ```
+   Respons yang diharapkan:
+   ```json
+   {"status": "ok", "service": "WAF SaaS API", "version": "1.0.0"}
+   ```
+4. Jika belum bisa diakses saat status masih *Creating*, tunggu hingga status *Running* baru coba lagi.
+
 ---
 
 ## Struktur Proyek
